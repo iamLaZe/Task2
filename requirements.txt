@@ -1,0 +1,8 @@
+fastapi
+uvicorn[standard]
+python-multipart
+pandas
+pillow
+requests
+python-dateutil
+python-dotenv

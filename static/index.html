@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Tarang Receipt Reader</title>
+<style>
+:root{--bg:#f4f6f9;--card:#fff;--ink:#1c2430;--mute:#6b7685;--line:#e3e8ef;--brand:#1f5fbf;
+--ok:#12805c;--okbg:#e4f5ee;--warn:#b25e00;--warnbg:#fff1dc;--bad:#c0332b;--badbg:#fdeaea}
+*{box-sizing:border-box}body{margin:0;font:15px/1.45 system-ui,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--ink)}
+header{background:var(--brand);color:#fff;padding:16px 24px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px}
+header h1{margin:0;font-size:19px}header small{opacity:.85}
+.banner{background:var(--warnbg);color:var(--warn);padding:10px 24px;border-bottom:1px solid #f0d6a8;display:none}
+main{max-width:1100px;margin:20px auto;padding:0 16px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px}
+@media(max-width:820px){main{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px}
+h2{margin:0 0 12px;font-size:15px;text-transform:uppercase;letter-spacing:.04em;color:var(--mute)}
+label{display:block;font-size:12.5px;color:var(--mute);margin:10px 0 3px}
+input,select,textarea{width:100%;padding:9px 10px;border:1px solid #cfd6e0;border-radius:8px;font:inherit;background:#fff}
+input:focus,select:focus{outline:2px solid #b9d0f5;border-color:var(--brand)}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.drop{border:2px dashed #b8c3d3;border-radius:12px;padding:16px;text-align:center;color:var(--mute);cursor:pointer;background:#fafbfd;min-height:120px;display:flex;align-items:center;justify-content:center;flex-direction:column}
+.drop.over{border-color:var(--brand);background:#eef4ff}.drop img{max-width:100%;max-height:260px;border-radius:8px}
+button{font:inherit;border:0;border-radius:8px;padding:11px 16px;cursor:pointer}
+.primary{background:var(--brand);color:#fff;width:100%;margin-top:16px;font-weight:600;font-size:16px}
+.primary:disabled{opacity:.6;cursor:wait}.ghost{background:#eef1f6;color:var(--ink);font-size:13px;padding:7px 10px}
+.badge{display:inline-block;font-weight:700;font-size:22px;padding:10px 20px;border-radius:10px;letter-spacing:.03em}
+.approve{background:var(--okbg);color:var(--ok)}.review{background:var(--warnbg);color:var(--warn)}
+.sub{color:var(--mute);margin:8px 0 0}
+.checks{list-style:none;padding:0;margin:14px 0 0}.checks li{padding:7px 0;border-top:1px solid var(--line);display:flex;gap:9px}
+.checks .i{font-weight:700;width:18px;flex:none}.p .i{color:var(--ok)}.f .i{color:var(--bad)}.f{font-weight:600}.n .i{color:var(--mute)}
+table{width:100%;border-collapse:collapse;margin-top:6px}th,td{text-align:left;padding:7px 6px;border-top:1px solid var(--line);font-size:14px}
+th{color:var(--mute);font-weight:500;font-size:12.5px}td.m{width:26px;text-align:center;font-weight:700}
+.y{color:var(--ok)}.x{color:var(--bad)}.err{background:var(--badbg);color:var(--bad);padding:12px;border-radius:8px}
+.empty{color:var(--mute);text-align:center;padding:40px 10px}
+details{margin-top:14px}summary{cursor:pointer;color:var(--mute);font-size:13px}pre{background:#f4f6f9;padding:10px;border-radius:8px;overflow:auto;font-size:12px}
+.spin{width:30px;height:30px;border:4px solid #dbe4f3;border-top-color:var(--brand);border-radius:50%;animation:r 1s linear infinite;margin:30px auto}@keyframes r{to{transform:rotate(360deg)}}
+</style></head><body>
+<header><h1>Tarang Receipt Reader</h1><small>Reads the bill, checks the claim, says approve or review</small></header>
+<div class="banner" id="banner"></div>
+<main>
+<section class="card">
+  <h2>1 · The claim (as the rep entered it)</h2>
+  <label>Try a claim from the latest batch (optional)</label>
+  <select id="sample"><option value="">- type a claim manually -</option></select>
+  <label>Receipt photo</label>
+  <div class="drop" id="drop"><div id="dropmsg">Drag a bill photo here, or click to choose</div><img id="prev" hidden alt="bill preview"></div>
+  <input type="file" id="photo" accept="image/*" hidden>
+  <label>Claimed by</label>
+  <select id="emp"><option value="">- select employee -</option></select>
+  <div class="row">
+    <div><label>Category</label><select id="category"><option>Fuel</option><option selected>Food</option><option>Lodging</option><option>Local travel</option><option>Courier</option><option>Parking</option></select></div>
+    <div><label>Amount claimed (Rs)</label><input id="amount" placeholder="e.g. 325 or Rs 1,102"></div>
+  </div>
+  <div class="row">
+    <div><label>Expense date</label><input id="date" placeholder="e.g. 18-07-2026"></div>
+    <div><label>Vendor (as typed)</label><input id="vendor" placeholder="e.g. Hotel Rajdhani"></div>
+  </div>
+  <label>Rep's comment</label><input id="comment" placeholder="e.g. Lunch with Dr. Patil">
+  <button class="primary" id="go">Read bill &amp; decide</button>
+  <p style="text-align:right;margin:10px 0 0"><button class="ghost" id="reset" title="Forget bills read in this session">Reset duplicate memory</button></p>
+</section>
+<section class="card" id="result"><h2>2 · Result</h2><div class="empty">Add a photo and the claim, then press <b>Read bill &amp; decide</b>.</div></section>
+</main>
+<script>
+const $=id=>document.getElementById(id);let samples=[],file=null,sampleId="";
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+async function init(){
+  try{const st=await (await fetch("/api/status")).json();
+    if(!st.has_key){const b=$("banner");b.style.display="block";b.textContent="No API key set - the reader is switched off. Add GEMINI_API_KEY to the .env file and restart the server (see README).";}
+    const emps=await (await fetch("/api/employees")).json();
+    $("emp").innerHTML+=emps.map(e=>`<option value="${esc(e.emp_id)}">${esc(e.name)} (${esc(e.grade)}, ${esc(e.vehicle_no)})</option>`).join("");
+    samples=await (await fetch("/api/samples")).json();
+    $("sample").innerHTML+=samples.map(s=>`<option value="${esc(s.claim_id)}">${esc(s.claim_id)} - ${esc(s.category)} - ${esc(s.amount_claimed)}${s.has_image?"":" (no photo on server)"}</option>`).join("");
+  }catch(e){}
+}
+function setFile(f){file=f;if(!f)return;const u=URL.createObjectURL(f);$("prev").src=u;$("prev").hidden=false;$("dropmsg").hidden=true}
+$("drop").onclick=()=>$("photo").click();$("photo").onchange=e=>{sampleId="";setFile(e.target.files[0])};
+["dragover","dragenter"].forEach(t=>$("drop").addEventListener(t,e=>{e.preventDefault();$("drop").classList.add("over")}));
+["dragleave","drop"].forEach(t=>$("drop").addEventListener(t,e=>{e.preventDefault();$("drop").classList.remove("over")}));
+$("drop").addEventListener("drop",e=>{sampleId="";setFile(e.dataTransfer.files[0])});
+$("sample").onchange=()=>{
+  const s=samples.find(x=>x.claim_id===$("sample").value);sampleId=s?s.claim_id:"";file=null;if(!s)return;
+  $("emp").value=s.emp_id;$("category").value=s.category;$("amount").value=s.amount_claimed;
+  $("date").value=s.expense_date;$("vendor").value=s.vendor;$("comment").value=s.rep_comment;
+  if(s.has_image){$("prev").src="/api/sample-image/"+s.claim_id;$("prev").hidden=false;$("dropmsg").hidden=true}
+  else{$("prev").hidden=true;$("dropmsg").hidden=false;$("dropmsg").textContent="No photo on the server for this claim - please attach one"}
+};
+$("reset").onclick=async()=>{await fetch("/api/reset",{method:"POST"});alert("Duplicate memory reset to the already-paid history.")};
+$("go").onclick=async()=>{
+  const r=$("result");
+  if(!file&&!sampleId){r.innerHTML='<h2>2 · Result</h2><div class="err">Please attach a receipt photo first.</div>';return}
+  const f=new FormData();if(file)f.append("photo",file);
+  f.append("claim_id",sampleId);f.append("emp_id",$("emp").value);f.append("category",$("category").value);
+  f.append("amount_claimed",$("amount").value);f.append("expense_date",$("date").value);
+  f.append("vendor",$("vendor").value);f.append("rep_comment",$("comment").value);
+  const sm=samples.find(x=>x.claim_id===sampleId);if(sm)f.append("submitted_on",sm.submitted_on);
+  $("go").disabled=true;r.innerHTML='<h2>2 · Result</h2><div class="spin"></div><p class="empty">Reading the bill…</p>';
+  try{const resp=await fetch("/api/read",{method:"POST",body:f});const j=await resp.json();
+    if(!resp.ok){r.innerHTML=`<h2>2 · Result</h2><div class="err">${esc(j.error||"Something went wrong")}</div>`}
+    else render(j);
+  }catch(e){r.innerHTML='<h2>2 · Result</h2><div class="err">Could not reach the server. Is it running?</div>'}
+  $("go").disabled=false;
+};
+function render(j){
+  const x=j.fields||{},c=j.claim||{};
+  const m=(ok)=>`<td class="m ${ok?"y":"x"}">${ok?"✓":"✗"}</td>`;
+  const sameAmt=c.amount_claimed!=null&&Math.abs((x.total_amount||0)-c.amount_claimed)<=10;
+  const sameDate=c.expense_date&&x.receipt_date===c.expense_date;
+  const rows=[["Vendor",x.vendor,c.vendor,null],["Bill date",x.receipt_date,c.expense_date,sameDate],
+    ["Bill number",x.receipt_number,"-",null],["GSTIN",x.gstin||"(none printed)","-",null],
+    ["Total amount",x.total_amount!=null?"Rs "+x.total_amount:"",c.amount_claimed!=null?"Rs "+c.amount_claimed:"",sameAmt]];
+  const cl=(j.checks||[]).map(k=>`<li class="${k.ok?"p":(k.hard?"f":"n")}"><span class="i">${k.ok?"✓":(k.hard?"✗":"!")}</span><span>${esc(k.msg)}</span></li>`).join("");
+  $("result").innerHTML=`<h2>2 · Result</h2>
+   <span class="badge ${j.decision}">${j.decision.toUpperCase()}</span>
+   <p class="sub">${j.decision==="approve"?"Every check passed - can be paid without a clerk opening it.":"A clerk should look at this one: "+esc(j.reason)}</p>
+   <h2 style="margin-top:20px">Read from the bill</h2>
+   <table><tr><th>Field</th><th>On the bill</th><th>Rep typed</th><th></th></tr>
+   ${rows.map(r=>`<tr><td>${r[0]}</td><td><b>${esc(r[1])||"-"}</b></td><td>${esc(r[2])||"-"}</td>${r[3]===null?"<td></td>":m(r[3])}</tr>`).join("")}</table>
+   <h2 style="margin-top:20px">Checks</h2><ul class="checks">${cl}</ul>
+   <details><summary>Raw JSON</summary><pre>${esc(JSON.stringify(j,null,2))}</pre></details>`;
+}
+init();
+</script></body></html>
